@@ -23,9 +23,28 @@ export default function Login() {
       if (res?.ok) {
         navigate(from, { replace: true });
       } else {
-        setError("Invalid credentials. Please try again.");
+        // Compose actionable message
+        if (res?.isNetworkError) {
+          const base = res?.details?.hints?.effectiveApiBase;
+          const suggested = res?.details?.hints?.suggestedHostedBase;
+          const msg = [
+            "Cannot reach the backend API.",
+            base ? `Tried: ${base}` : "",
+            suggested ? `Hint: set REACT_APP_API_BASE=${suggested} or ensure the backend is running and CORS allows this origin.` : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
+          setError(msg || "Network error contacting API.");
+        } else if (res?.status === 401) {
+          setError(res?.error || "Invalid credentials. Please try again.");
+        } else if (res?.error) {
+          setError(res.error);
+        } else {
+          setError("Login failed. Please try again.");
+        }
       }
     } catch (err) {
+      // Fallback catch (should be covered by normalized result)
       setError(err?.message || "Login failed");
     } finally {
       setSubmitting(false);

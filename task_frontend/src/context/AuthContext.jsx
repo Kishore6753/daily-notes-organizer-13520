@@ -58,14 +58,32 @@ export default function AuthProvider({ children }) {
   const isAuthenticated = !!token && !!user;
 
   const login = useCallback(async (email, password) => {
-    const res = await loginRequest({ email, password });
-    if (res?.token && res?.user) {
-      setToken(res.token);
-      setUser(res.user);
-      writePersistedAuth(res.token, res.user);
-      return { ok: true };
+    try {
+      const res = await loginRequest({ email, password });
+      if (res?.token && res?.user) {
+        setToken(res.token);
+        setUser(res.user);
+        writePersistedAuth(res.token, res.user);
+        return { ok: true };
+      }
+      return { ok: false, error: "Invalid response from server." };
+    } catch (err) {
+      // Normalize error shape for UI to present actionable messages
+      return {
+        ok: false,
+        error:
+          err?.isNetworkError
+            ? "Network error"
+            : err?.data?.message || err?.message || "Login failed",
+        status: err?.status,
+        isNetworkError: !!err?.isNetworkError,
+        details: {
+          url: err?.url,
+          method: err?.method,
+          hints: err?.hints || null,
+        },
+      };
     }
-    return { ok: false, error: "Invalid response" };
   }, []);
 
   const signup = useCallback(async (name, email, password) => {
