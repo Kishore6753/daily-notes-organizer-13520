@@ -1,9 +1,9 @@
 import React from "react";
 
-/** Top search bar shown on all pages */
+/** Top search input (to be embedded into header) */
 export default function TopSearchBar({ value, onChange, placeholder = "Search notes..." }) {
   return (
-    <header className="topbar">
+    <>
       <input
         className="search"
         type="search"
@@ -12,10 +12,6 @@ export default function TopSearchBar({ value, onChange, placeholder = "Search no
         onChange={(e) => onChange?.(e.target.value)}
         aria-label="Global search"
       />
-      <button className="btn btn-icon" aria-label="Notifications">
-        🔔
-      </button>
-      <div className="badge" aria-label="Profile">JD</div>
-    </header>
+    </>
   );
 }

@@ -7,14 +7,18 @@ import { listNotes, updateNote, deleteNote } from "../services/api";
 export default function Dashboard({ globalQuery }) {
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   async function refresh() {
     setLoading(true);
+    setError("");
     try {
       const data = await listNotes({ q: globalQuery || "" });
       setNotes(Array.isArray(data) ? data : (data?.items || []));
-    } catch {
+    } catch (e) {
       setNotes([]);
+      if (e?.status === 401) setError("Please sign in to view your dashboard.");
+      else setError(e?.message || "Failed to load notes.");
     } finally {
       setLoading(false);
     }
@@ -41,7 +45,7 @@ export default function Dashboard({ globalQuery }) {
   return (
     <div className="container">
       <div style={{ marginBottom: 16 }}>
-        <div className="h1">Welcome back, Jane 👋</div>
+        <div className="h1">Welcome back 👋</div>
         <div className="meta">{new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}</div>
       </div>
 
@@ -57,7 +61,8 @@ export default function Dashboard({ globalQuery }) {
           </div>
           <div role="list" aria-busy={loading}>
             {loading ? <div className="meta">Loading...</div> : null}
-            {!loading && notes.length === 0 ? (
+            {error ? <div className="meta" style={{ color: "var(--danger)" }}>{error}</div> : null}
+            {!loading && !error && notes.length === 0 ? (
               <div style={{ textAlign: "center", padding: 40 }}>
                 <div className="h3" style={{ marginBottom: 8 }}>No notes yet</div>
                 <div className="meta">Create your first note to get started</div>

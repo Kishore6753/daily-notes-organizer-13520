@@ -10,14 +10,18 @@ export default function Notes({ globalQuery }) {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [error, setError] = useState("");
 
   async function refresh() {
     setLoading(true);
+    setError("");
     try {
       const data = await listNotes({ q: globalQuery || "" });
       setNotes(Array.isArray(data) ? data : (data?.items || []));
-    } catch {
+    } catch (e) {
       setNotes([]);
+      if (e?.status === 401) setError("Please sign in to view your notes.");
+      else setError(e?.message || "Failed to load notes.");
     } finally {
       setLoading(false);
     }
@@ -38,7 +42,7 @@ export default function Notes({ globalQuery }) {
     if (editing) {
       await updateNote(editing.id, form);
     } else {
-      await createNote({ ...form, user_id: 1 });
+      await createNote({ ...form });
     }
     setShowModal(false);
     setEditing(null);
@@ -75,8 +79,9 @@ export default function Notes({ globalQuery }) {
 
         <div role="list" aria-busy={loading} style={{ display: "grid", gap: 12 }}>
           {loading ? <div className="meta">Loading...</div> : null}
-          {!loading && notes.length === 0 ? <div className="meta">You’re all caught up! Add a note.</div> : null}
-          {notes.map(n => (
+          {error ? <div className="meta" style={{ color: "var(--danger)" }}>{error}</div> : null}
+          {!loading && !error && notes.length === 0 ? <div className="meta">You’re all caught up! Add a note.</div> : null}
+          {!loading && notes.map(n => (
             <TaskRow
               key={n.id}
               note={n}
