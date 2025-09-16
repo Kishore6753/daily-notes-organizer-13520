@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { getApiConfig } from "../utils/config";
 import { getHealth } from "../services/api";
 
@@ -7,6 +7,10 @@ import { getHealth } from "../services/api";
  * Renders a prominent warning when the API base is unset or incorrectly points to localhost
  * while the app is running in a hosted/cloud environment.
  * Improvement: perform a runtime health probe; if backend is reachable, suppress the banner.
+ *
+ * Additional improvements:
+ * - Always probe on hosted environments at mount (not only when heuristics suggest warning), so a healthy backend hides the banner proactively.
+ * - Add a minimal debounce and one retry to reduce flicker/false positives on slow cold starts.
  */
 export default function ConfigWarningBanner() {
   const {
@@ -18,30 +22,55 @@ export default function ConfigWarningBanner() {
   } = getApiConfig();
 
   const [overrideHide, setOverrideHide] = useState(false);
+  const [probing, setProbing] = useState(false);
+  const retryRef = useRef(0);
+
   const shouldWarnHeuristic = hostedLikely && (isUnset || looksLocalhost);
 
+  // Probe health when hosted to decide banner visibility more robustly
   useEffect(() => {
     let cancelled = false;
 
-    // If heuristics say "warn", try a quick health probe; if it succeeds, hide the banner
-    async function probe() {
-      if (!shouldWarnHeuristic) return;
+    async function probeWithRetry() {
+      if (!hostedLikely) return;
+      setProbing(true);
       try {
+        // Try health check
         await getHealth();
         if (!cancelled) setOverrideHide(true);
       } catch {
-        // Keep banner visible if health fails
+        // Brief retry once in case of cold-start/transient issues
+        if (!cancelled && retryRef.current < 1) {
+          retryRef.current += 1;
+          setTimeout(async () => {
+            try {
+              await getHealth();
+              if (!cancelled) setOverrideHide(true);
+            } catch {
+              if (!cancelled) setOverrideHide(false);
+            } finally {
+              if (!cancelled) setProbing(false);
+            }
+          }, 400);
+          return;
+        }
         if (!cancelled) setOverrideHide(false);
+      } finally {
+        if (!cancelled) setProbing(false);
       }
     }
-    probe();
+
+    probeWithRetry();
 
     return () => {
       cancelled = true;
     };
-  }, [shouldWarnHeuristic]);
+  }, [hostedLikely]);
 
-  const shouldWarn = shouldWarnHeuristic && !overrideHide;
+  const shouldWarn = useMemo(() => {
+    // Only show banner if heuristics suggest a problem AND health probe did not override hiding.
+    return shouldWarnHeuristic && !overrideHide;
+  }, [shouldWarnHeuristic, overrideHide]);
 
   if (!shouldWarn) return null;
 
@@ -68,8 +97,13 @@ export default function ConfigWarningBanner() {
         gap: 6,
       }}
     >
-      <div style={{ fontWeight: 700, color: "#FCA5A5" }}>
-        API Base Misconfiguration Detected
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ fontWeight: 700, color: "#FCA5A5" }}>
+          API Base Misconfiguration Detected
+        </div>
+        {probing ? (
+          <span className="meta" aria-live="polite">Rechecking…</span>
+        ) : null}
       </div>
       <div style={{ color: "#FCA5A5" }}>
         {message} Since this app is running on a hosted URL (not localhost), API requests to localhost will fail due to network/CORS.
