@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { getApiConfig } from "../utils/config";
+import { getHealth } from "../services/api";
 
 /**
  * ConfigWarningBanner
  * Renders a prominent warning when the API base is unset or incorrectly points to localhost
  * while the app is running in a hosted/cloud environment.
+ * Improvement: perform a runtime health probe; if backend is reachable, suppress the banner.
  */
 export default function ConfigWarningBanner() {
   const {
@@ -15,7 +17,31 @@ export default function ConfigWarningBanner() {
     effectiveBase,
   } = getApiConfig();
 
-  const shouldWarn = hostedLikely && (isUnset || looksLocalhost);
+  const [overrideHide, setOverrideHide] = useState(false);
+  const shouldWarnHeuristic = hostedLikely && (isUnset || looksLocalhost);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    // If heuristics say "warn", try a quick health probe; if it succeeds, hide the banner
+    async function probe() {
+      if (!shouldWarnHeuristic) return;
+      try {
+        await getHealth();
+        if (!cancelled) setOverrideHide(true);
+      } catch {
+        // Keep banner visible if health fails
+        if (!cancelled) setOverrideHide(false);
+      }
+    }
+    probe();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [shouldWarnHeuristic]);
+
+  const shouldWarn = shouldWarnHeuristic && !overrideHide;
 
   if (!shouldWarn) return null;
 
