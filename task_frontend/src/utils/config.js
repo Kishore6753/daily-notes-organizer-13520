@@ -111,9 +111,8 @@ export function getApiConfig() {
         rewritten = true;
 
         // eslint-disable-next-line no-console
-        console.warn(
-          `[config] Hosted environment detected. Using computed API base "${effectiveBase}" ` +
-            `instead of env "${rawEnvBase || "(unset)"}".`
+        console.debug(
+          `[config] Using dynamic API base (hosted inference): "${effectiveBase}". Env="${rawEnvBase || "(unset)"}"`
         );
         setRuntimeWarningFlag(false);
       } catch (e) {
@@ -151,6 +150,9 @@ export function getApiConfig() {
     typeof effectiveBase === "string" &&
     (effectiveBase.includes("localhost") || effectiveBase.includes("127.0.0.1"));
 
+  // Derived convenience: whether we are actively using dynamic inference
+  const dynamicInferenceActive = hostedLikely && rewritten && !rewriteError;
+
   return {
     effectiveBase,
     isUnset,
@@ -160,5 +162,6 @@ export function getApiConfig() {
     envInvalid,
     rewritten, // whether we overrode env at runtime
     rewriteError, // error object if rewrite failed
+    dynamicInferenceActive, // true when using computed https://<host>:3001
   };
 }

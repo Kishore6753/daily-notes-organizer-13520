@@ -6,20 +6,26 @@ const {
   looksLocalhost,
   hostedLikely,
   suggestedHostedBase,
+  rewritten,
+  dynamicInferenceActive,
 } = getApiConfig();
 
-// Developer hint to properly configure backend base URL in non-local environments
-if (hostedLikely && (isUnset || looksLocalhost)) {
+// Developer hints: avoid misleading messages if dynamic inference is being used
+if (hostedLikely && (isUnset || looksLocalhost) && !dynamicInferenceActive) {
   // eslint-disable-next-line no-console
   console.warn(
     `[config] Potential API base misconfiguration. effectiveBase="${API_BASE}". ` +
-      `Hosted=${hostedLikely}. Try setting REACT_APP_API_BASE=${suggestedHostedBase}`
+      `Hosted=${hostedLikely}. Consider setting REACT_APP_API_BASE=${suggestedHostedBase}`
   );
-} else if (isUnset) {
+} else if (dynamicInferenceActive) {
+  // eslint-disable-next-line no-console
+  console.debug(
+    `[config] Dynamic API base in effect (${rewritten ? "rewritten" : "env"}): ${API_BASE}`
+  );
+} else if (!hostedLikely && isUnset) {
   // eslint-disable-next-line no-console
   console.warn(
-    "[config] REACT_APP_API_BASE is not set. Falling back to http://localhost:3001. " +
-      "If you are not running the backend on localhost, set REACT_APP_API_BASE in .env"
+    "[config] REACT_APP_API_BASE is not set. Falling back to http://localhost:3001 for local development."
   );
 }
 

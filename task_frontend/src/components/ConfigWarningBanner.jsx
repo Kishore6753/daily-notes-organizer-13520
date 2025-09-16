@@ -19,13 +19,16 @@ export default function ConfigWarningBanner() {
     hostedLikely,
     suggestedHostedBase,
     effectiveBase,
+    rewritten,
+    dynamicInferenceActive,
   } = getApiConfig();
 
   const [overrideHide, setOverrideHide] = useState(false);
   const [probing, setProbing] = useState(false);
   const retryRef = useRef(0);
 
-  const shouldWarnHeuristic = hostedLikely && (isUnset || looksLocalhost);
+  // If dynamic inference is active and health check succeeds, we should never show a warning.
+  const shouldWarnHeuristic = hostedLikely && (isUnset || looksLocalhost) && !dynamicInferenceActive;
 
   // Probe health when hosted to decide banner visibility more robustly
   useEffect(() => {
@@ -37,7 +40,11 @@ export default function ConfigWarningBanner() {
       try {
         // Try health check
         await getHealth();
-        if (!cancelled) setOverrideHide(true);
+        if (!cancelled) {
+          setOverrideHide(true);
+          // eslint-disable-next-line no-console
+          console.debug("[config/banner] Health probe succeeded. Hiding banner. base=", effectiveBase, "dynamic=", dynamicInferenceActive, "rewritten=", rewritten);
+        }
       } catch {
         // Brief retry once in case of cold-start/transient issues
         if (!cancelled && retryRef.current < 1) {
@@ -45,7 +52,11 @@ export default function ConfigWarningBanner() {
           setTimeout(async () => {
             try {
               await getHealth();
-              if (!cancelled) setOverrideHide(true);
+              if (!cancelled) {
+                setOverrideHide(true);
+                // eslint-disable-next-line no-console
+                console.debug("[config/banner] Health probe retry succeeded. Hiding banner.");
+              }
             } catch {
               if (!cancelled) setOverrideHide(false);
             } finally {
@@ -65,7 +76,7 @@ export default function ConfigWarningBanner() {
     return () => {
       cancelled = true;
     };
-  }, [hostedLikely]);
+  }, [hostedLikely, effectiveBase, dynamicInferenceActive, rewritten]);
 
   const shouldWarn = useMemo(() => {
     // Only show banner if heuristics suggest a problem AND health probe did not override hiding.
@@ -74,10 +85,14 @@ export default function ConfigWarningBanner() {
 
   if (!shouldWarn) return null;
 
+  // Tailored message: if dynamic inference is inactive and we truly have a localhost/empty env in hosted
   const message =
-    isUnset
-      ? "REACT_APP_API_BASE is not set."
-      : `REACT_APP_API_BASE is set to ${effectiveBase}, which points to localhost.`;
+    isUnset && !dynamicInferenceActive
+      ? "API base is not set in the environment for a hosted deployment."
+      : `Configured API base "${effectiveBase}" points to localhost while running on a hosted URL.`;
+
+  // If dynamic inference were active we wouldn't reach here, but keep the copy clean:
+  const showEnvGuidance = !dynamicInferenceActive;
 
   return (
     <div
@@ -106,21 +121,26 @@ export default function ConfigWarningBanner() {
         ) : null}
       </div>
       <div style={{ color: "#FCA5A5" }}>
-        {message} Since this app is running on a hosted URL (not localhost), API requests to localhost will fail due to network/CORS.
+        {message} Hosted environments cannot reach localhost services directly.
       </div>
-      <div style={{ color: "#FCA5A5" }}>
-        To fix:
-      </div>
-      <ul style={{ margin: 0, paddingLeft: 18, color: "#FCA5A5" }}>
-        <li>Set REACT_APP_API_BASE to the backend URL, then rebuild/redeploy the frontend.</li>
-        <li>Example (paste into .env): REACT_APP_API_BASE={suggestedHostedBase}</li>
-        <li>Backend docs: check that your backend is reachable and has CORS enabled for this origin.</li>
-      </ul>
-      <div style={{ marginTop: 6 }}>
-        <code style={{ background: "rgba(0,0,0,0.2)", padding: "6px 8px", borderRadius: 6 }}>
-          REACT_APP_API_BASE={suggestedHostedBase}
-        </code>
-      </div>
+
+      {showEnvGuidance ? (
+        <>
+          <div style={{ color: "#FCA5A5" }}>
+            Recommended fix:
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 18, color: "#FCA5A5" }}>
+            <li>Set REACT_APP_API_BASE to the backend URL for this host, then rebuild/redeploy the frontend.</li>
+            <li>Example: REACT_APP_API_BASE={suggestedHostedBase}</li>
+            <li>Ensure the backend allows this origin via CORS and is reachable over the network.</li>
+          </ul>
+          <div style={{ marginTop: 6 }}>
+            <code style={{ background: "rgba(0,0,0,0.2)", padding: "6px 8px", borderRadius: 6 }}>
+              REACT_APP_API_BASE={suggestedHostedBase}
+            </code>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
