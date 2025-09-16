@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import Notes from "./pages/Notes";
 import Tags from "./pages/Tags";
 import Categories from "./pages/Categories";
+import ConfigWarningBanner from "./components/ConfigWarningBanner";
 
 // PUBLIC_INTERFACE
 function App() {
@@ -18,6 +19,7 @@ function App() {
       <div className="layout">
         <SidebarNav />
         <TopSearchBar value={globalQuery} onChange={setGlobalQuery} />
+        <ConfigWarningBanner />
         <main className="main">
           <Routes>
             <Route path="/" element={<Dashboard globalQuery={globalQuery} />} />

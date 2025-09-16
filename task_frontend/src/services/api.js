@@ -1,7 +1,21 @@
-const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:3001";
+import { getApiConfig } from "../utils/config";
+
+const {
+  effectiveBase: API_BASE,
+  isUnset,
+  looksLocalhost,
+  hostedLikely,
+  suggestedHostedBase,
+} = getApiConfig();
 
 // Developer hint to properly configure backend base URL in non-local environments
-if (!process.env.REACT_APP_API_BASE) {
+if (hostedLikely && (isUnset || looksLocalhost)) {
+  // eslint-disable-next-line no-console
+  console.warn(
+    `[config] Potential API base misconfiguration. effectiveBase="${API_BASE}". ` +
+      `Hosted=${hostedLikely}. Try setting REACT_APP_API_BASE=${suggestedHostedBase}`
+  );
+} else if (isUnset) {
   // eslint-disable-next-line no-console
   console.warn(
     "[config] REACT_APP_API_BASE is not set. Falling back to http://localhost:3001. " +
@@ -27,6 +41,14 @@ async function request(path, options = {}) {
     );
     err.cause = networkErr;
     err.isNetworkError = true;
+    // Attach helpful context for hosted misconfig
+    err.hints = {
+      effectiveApiBase: API_BASE,
+      hostedLikely,
+      suggestedHostedBase,
+    };
+    // eslint-disable-next-line no-console
+    console.error("[api] Network error", err);
     throw err;
   }
 
