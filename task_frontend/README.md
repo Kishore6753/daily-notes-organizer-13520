@@ -13,9 +13,14 @@ A modern, lightweight React UI for managing daily notes with tagging, search, an
      For local dev: REACT_APP_API_BASE=http://localhost:3001
      For hosted env (example): REACT_APP_API_BASE=https://vscode-internal-36885-beta.beta01.cloud.kavia.ai:3001
 
-   Notes:
-   - If `REACT_APP_API_BASE` is not set, the app falls back to `http://localhost:3001` for local development.
-   - On hosted environments, pointing to localhost will fail due to network/CORS; the UI shows a banner and the console logs a warning with a suggested base.
+   Notes (Updated):
+   - Local development:
+     - If `REACT_APP_API_BASE` is unset or invalid, the app falls back to `http://localhost:3001`.
+   - Hosted/cloud/preview environments (not on localhost/127.0.0.1):
+     - If `REACT_APP_API_BASE` is unset, invalid, or points to localhost, the app will automatically compute and use:
+       `https://<current-hostname>:3001` (protocol preserved, port 3001).
+     - There is no fallback to `http://localhost:3001` in hosted environments.
+     - The console will show a warning when a runtime rewrite occurs. If the rewrite fails, an error is logged and the in‑app warning may appear.
 
 3) Run the app:
    npm start
@@ -34,16 +39,17 @@ The app will be available at http://localhost:3000
 ## API
 
 The frontend talks to the Express backend defined by the OpenAPI at `task_backend`:
-- Base URL configured via REACT_APP_API_BASE (read at build/start; normalized and validated by `src/utils/config.js`)
+- Base URL configured via REACT_APP_API_BASE, normalized and validated by `src/utils/config.js`
+- Hosted behavior: runtime rewrite to `https://<hostname>:3001` if env is unset/invalid/localhost-like
 - Endpoints used: /notes, /notes/{id}, /tags, /tags/{id}, and root health `/`
 
 ## Troubleshooting
 
-- "TypeError: Failed to fetch" when creating a note
-  - Ensure `REACT_APP_API_BASE` is set to the correct backend origin (protocol + host + port).
-  - Check browser console for CORS/network errors.
-  - Our fetch layer surfaces clearer errors, safely parses empty responses, and warns on misconfiguration.
-  - The UI banner (`ConfigWarningBanner`) appears when the app is hosted but REACT_APP_API_BASE is unset or points to localhost.
+- "TypeError: Failed to fetch" when calling the API
+  - Local dev: ensure the backend is running on http://localhost:3001 or set `REACT_APP_API_BASE` accordingly.
+  - Hosted/cloud: the app auto-uses `https://<hostname>:3001` if misconfigured. Verify your backend is reachable at that origin and CORS allows the frontend origin.
+  - Check browser console for any `[config]` warnings/errors.
+  - The UI banner (`ConfigWarningBanner`) appears when hosted and configuration is likely incorrect. It automatically hides once the backend health probe succeeds.
 
 ## Styling
 
