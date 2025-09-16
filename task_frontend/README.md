@@ -29,12 +29,7 @@ The app will be available at http://localhost:3000
 
 ## Authentication
 
-- New pages: Login (`/login`) and Signup (`/signup`)
-- JWT storage: on successful login, a JWT token and user are persisted in localStorage under `auth:token` and `auth:user`.
-- Authorization: all note endpoints automatically include `Authorization: Bearer <token>` when a token is present.
-- Protected routes: all app routes are protected and redirect to `/login` if unauthenticated.
-- Logout: click "Log out" in the header to clear credentials and return to the login page.
-- Notes visibility: notes are fetched for the currently logged-in user (user_id is derived by the backend from JWT; the frontend does not send user_id).
+This build does not include authentication. The app renders the dashboard immediately and allows interacting with notes/tags without login. Any backend enforcing auth must be configured to allow unauthenticated access or mocked for demos.
 
 ## Features implemented
 
@@ -61,7 +56,7 @@ The frontend talks to the Express backend defined by the OpenAPI at `task_backen
   - Check browser console for any `[config]` warnings/errors.
   - The UI banner (`ConfigWarningBanner`) appears when hosted and configuration is likely incorrect. It automatically hides once the backend health probe succeeds.
 - 401 Unauthorized
-  - Sign in at `/login` first. The notes endpoints require a valid JWT.
+  - Ensure your backend allows the requests without JWT for this demo build or disable auth on note/tag endpoints for testing.
 
 ## Styling
 

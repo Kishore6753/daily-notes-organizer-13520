@@ -29,18 +29,6 @@ if (hostedLikely && (isUnset || looksLocalhost) && !dynamicInferenceActive) {
   );
 }
 
-/**
- * Token accessor for attaching Authorization header.
- * Reads token from localStorage to avoid circular imports with context.
- */
-function getAuthToken() {
-  try {
-    return window.localStorage.getItem("auth:token") || "";
-  } catch {
-    return "";
-  }
-}
-
 // Thin wrapper around fetch with JSON handling and robust error reporting
 async function request(path, options = {}) {
   const url = `${API_BASE}${path}`;
@@ -49,11 +37,6 @@ async function request(path, options = {}) {
     "Content-Type": "application/json",
     ...(options.headers || {}),
   };
-
-  const token = getAuthToken();
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
 
   let resp;
   try {
@@ -121,52 +104,40 @@ export async function getHealth() {
 }
 
 // PUBLIC_INTERFACE
-export async function loginRequest(payload) {
-  /** Auth: login, returns { token, user } */
-  return request("/login", { method: "POST", body: JSON.stringify(payload) });
-}
-
-// PUBLIC_INTERFACE
-export async function signupRequest(payload) {
-  /** Auth: signup, returns created user; may include token+user depending on backend */
-  return request("/signup", { method: "POST", body: JSON.stringify(payload) });
-}
-
-// PUBLIC_INTERFACE
 export async function listNotes(params = {}) {
-  /** List/search notes for the logged-in user via JWT; supports tag_ids, status, priority, archived, q, pagination */
+  /** List/search notes; supports tag_ids, status, priority, archived, q, pagination */
   const q = new URLSearchParams(params).toString();
   return request(`/notes${q ? `?${q}` : ""}`, { method: "GET" });
 }
 
 // PUBLIC_INTERFACE
 export async function getNote(id) {
-  /** Get a single note by id (requires auth) */
+  /** Get a single note by id */
   return request(`/notes/${id}`, { method: "GET" });
 }
 
 // PUBLIC_INTERFACE
 export async function createNote(payload) {
-  /** Create a note (requires auth). Backend derives user_id from JWT; do not send user_id. */
+  /** Create a note */
   const { user_id, ...rest } = payload || {};
   return request("/notes", { method: "POST", body: JSON.stringify(rest) });
 }
 
 // PUBLIC_INTERFACE
 export async function updateNote(id, payload) {
-  /** Update a note by id (requires auth) */
+  /** Update a note by id */
   return request(`/notes/${id}`, { method: "PUT", body: JSON.stringify(payload) });
 }
 
 // PUBLIC_INTERFACE
 export async function deleteNote(id) {
-  /** Delete a note by id (requires auth) */
+  /** Delete a note by id */
   return request(`/notes/${id}`, { method: "DELETE" });
 }
 
 // PUBLIC_INTERFACE
 export async function listTags(params = {}) {
-  /** List tags (public or protected depending on backend) */
+  /** List tags */
   const q = new URLSearchParams(params).toString();
   return request(`/tags${q ? `?${q}` : ""}`, { method: "GET" });
 }

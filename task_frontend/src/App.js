@@ -8,23 +8,11 @@ import Notes from "./pages/Notes";
 import Tags from "./pages/Tags";
 import Categories from "./pages/Categories";
 import ConfigWarningBanner from "./components/ConfigWarningBanner";
-import AuthProvider, { useAuth } from "./context/AuthContext";
-import RequireAuth from "./components/RequireAuth";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
 
 // PUBLIC_INTERFACE
 function AppShell() {
-  /** Authenticated shell: renders layout with sidebar, topbar, routes */
+  /** Application shell: renders layout with sidebar, topbar, and routes (no auth) */
   const [globalQuery, setGlobalQuery] = useState("");
-  const { user, logout } = useAuth();
-
-  const initials =
-    (user?.name || user?.email || "User")
-      .split(" ")
-      .map((s) => s[0]?.toUpperCase())
-      .slice(0, 2)
-      .join("") || "U";
 
   return (
     <div className="layout">
@@ -37,8 +25,8 @@ function AppShell() {
           placeholder="Search notes..."
         />
         <button className="btn btn-icon" aria-label="Notifications">🔔</button>
-        <div className="badge" aria-label="Profile">{initials}</div>
-        <button className="btn btn-secondary" onClick={logout}>Log out</button>
+        {/* Auth removed: keep simple avatar placeholder */}
+        <div className="badge" aria-label="Profile">DN</div>
       </header>
       <main className="main">
         <Routes>
@@ -54,26 +42,13 @@ function AppShell() {
 
 // PUBLIC_INTERFACE
 function App() {
-  /** Root app with auth provider and public/private routes */
+  /** Root app with public routes only; dashboard is the default view */
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          {/* Private routes */}
-          <Route
-            path="/*"
-            element={
-              <RequireAuth>
-                <AppShell />
-              </RequireAuth>
-            }
-          />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/*" element={<AppShell />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

@@ -17,8 +17,7 @@ export default function Dashboard({ globalQuery }) {
       setNotes(Array.isArray(data) ? data : (data?.items || []));
     } catch (e) {
       setNotes([]);
-      if (e?.status === 401) setError("Please sign in to view your dashboard.");
-      else setError(e?.message || "Failed to load notes.");
+      setError(e?.message || "Failed to load notes.");
     } finally {
       setLoading(false);
     }
